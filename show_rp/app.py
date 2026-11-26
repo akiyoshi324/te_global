@@ -59,14 +59,33 @@ folium.raster_layers.ImageOverlay(
     name="Return Period",
 ).add_to(m)
 
-# 地図の表示とクリックイベントの取得
-map_data = st_folium(m, width=None, height=620, returned_objects=["last_clicked"])
+# ピン用のレイヤーを作成（前回のクリック位置があればピンを立てる）
+fg = folium.FeatureGroup(name="Selected Point")
+if "clicked_pos" in st.session_state:
+    c_lat, c_lon = st.session_state["clicked_pos"]
+    folium.Marker(
+        location=[c_lat, c_lon],
+        icon=folium.Icon(color="blue", icon="info-sign"),
+    ).add_to(fg)
 
-# クリック地点の値を表示
+# feature_group_to_add=fg を追加（地図のズーム位置を維持したままピンだけ更新）
+map_data = st_folium(
+    m,
+    width=None,
+    height=620,
+    feature_group_to_add=fg,
+    returned_objects=["last_clicked"],
+)
+
 if map_data and map_data.get("last_clicked"):
     lat = map_data["last_clicked"]["lat"]
     lon = map_data["last_clicked"]["lng"]
-    # 経度を [-180, 180] に正規化
+
+    # クリック位置が変わったら保存して再描画（ピンを即時反映）
+    if st.session_state.get("clicked_pos") != (lat, lon):
+        st.session_state["clicked_pos"] = (lat, lon)
+        st.rerun()
+
     lon = ((lon + 180.0) % 360.0) - 180.0
 
     col = int((lon + 180.0) / 360.0 * ncols)
